@@ -162,11 +162,14 @@ class Http
 
         if ($this->settings()->isReadOnlyUser())
         {
-            unset($settings['extremes']);
-            unset($settings['readonly']);
-            unset($settings['enable_http_compression']);
-            unset($settings['max_execution_time']);
-
+            // allow_change_settings must be ON when readonly=2 on server
+            if (!$settings['allow_change_settings']) { // if its OFF then we don't send any setting to server
+                unset($settings['extremes']);
+                unset($settings['enable_http_compression']);
+                unset($settings['max_execution_time']);
+            }
+            unset($settings['readonly']); // a read-only user's NOT allowed to change "readonly" setting
+            unset($settings['allow_change_settings']); // this is just a client-only setting NOT server setting, we also don't send it
         }
 
         unset($settings['https']);
