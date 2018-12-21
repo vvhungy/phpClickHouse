@@ -52,8 +52,9 @@ class Query
         if (null === $this->format) {
             return false;
         }
+        // NOTE: longer FORMAT name should be put to the left-side of the string
         $supportFormats =
-            "FORMAT\\s+TSV|FORMAT\\s+TSVRaw|FORMAT\\s+TSVWithNames|FORMAT\\s+TSVWithNamesAndTypes|FORMAT\\s+Vertical|FORMAT\\s+JSONCompact|FORMAT\\s+JSONEachRow|FORMAT\\s+TSKV|FORMAT\\s+TabSeparatedWithNames|FORMAT\\s+TabSeparatedWithNamesAndTypes|FORMAT\\s+TabSeparatedRaw|FORMAT\\s+BlockTabSeparated|FORMAT\\s+CSVWithNames|FORMAT\\s+CSV|FORMAT\\s+JSON|FORMAT\\s+TabSeparated";
+            "FORMAT\\s+TabSeparatedWithNamesAndTypes|FORMAT\\s+TabSeparatedWithNames|FORMAT\\s+TabSeparatedRaw|FORMAT\\s+TabSeparated|FORMAT\\s+TSVWithNamesAndTypes|FORMAT\\s+TSVWithNames|FORMAT\\s+TSVRaw|FORMAT\\s+TSV|FORMAT\\s+TSKV|FORMAT\\s+JSONCompact|FORMAT\\s+JSONEachRow|FORMAT\\s+BlockTabSeparated|FORMAT\\s+CSVWithNames|FORMAT\\s+CSV|FORMAT\\s+JSON|FORMAT\\s+Vertical";
 
         $matches = [];
         if (preg_match_all('%(' . $supportFormats . ')%ius', $this->sql, $matches)) {
