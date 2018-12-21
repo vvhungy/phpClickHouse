@@ -33,6 +33,14 @@ final class FormatQueryTest extends TestCase
 
 
 
+        $query="SELECT number as format_id FROM system.numbers LIMIT 3 FORMAT TSVWithNamesAndTypes";
+        $st = $this->client->select($query);
+        $this->assertEquals($query, $st->sql());
+        $this->assertEquals('TSVWithNamesAndTypes', $st->getFormat());
+        $this->assertEquals("format_id\nUInt64\n0\n1\n2\n", $st->rawData());
+
+
+
         $query="SELECT number as format_id FROM system.numbers LIMIT 3 FORMAT CSVWithNames";
         $st = $this->client->select($query);
         $this->assertEquals($query, $st->sql());
