@@ -208,49 +208,71 @@ class Statement
 
         $this->check();
 
-
         $this->_rawData = $this->response()->rawDataOrJson($this->format);
 
+        $this->_init = true;
+
         if (!$this->_rawData) {
-            $this->_init = true;
             return false;
         }
-        $data=[];
-        foreach (['meta', 'data', 'totals', 'extremes', 'rows', 'rows_before_limit_at_least', 'statistics'] as $key) {
+
+        foreach (['meta', 'totals', 'extremes', 'rows', 'rows_before_limit_at_least', 'statistics'] as $key) {
 
             if (isset($this->_rawData[$key])) {
-                if ($key=='data')
-                {
-                    $data=$this->_rawData[$key];
-                }
-                else{
-                    $this->{$key} = $this->_rawData[$key];
-                }
-
+                $this->{$key} = $this->_rawData[$key];
             }
+
         }
 
-        if (empty($this->meta)) {
+        $data=[];
+
+        $isTSVWithNames = stripos('TSVWithNames|TabSeparatedWithNames|', $this->format.'|')!==false?true:false;
+        $isTSVWithNamesAndTypes = stripos('TSVWithNamesAndTypes|TabSeparatedWithNamesAndTypes|', $this->format.'|')!==false?true:false;
+        $isCSVWithNames = stripos($this->format,'CSVWithNames')!==false?true:false;
+        $isJSONEachRow = stripos($this->format,'JSONEachRow')!==false?true:false;
+        $isCSV = stripos($this->format,'CSV')!==false?true:false;
+        $isTSV = stripos('TabSeparated|TSV|', $this->format.'|')!==false?true:false;
+
+        if ($isTSVWithNames || $isTSVWithNamesAndTypes || $isCSVWithNames) { // TSVWithNames*/CSVWithNames, the 1st row should be columns' name
+            $data = explode("\n", trim($this->_rawData)); // TODO: shoud we parse _rawData line-by-line to save memory???
+            unset($this->_rawData); // no need to keep rawData
+
+            $separatedChar = ($isCSVWithNames) ? ',' : "\t";
+            $this->meta = array_map(function($v){ return ['name' => trim($v,'"')]; }, explode($separatedChar, $data[0]));
+            unset($data[0]);
+            if ($isTSVWithNamesAndTypes) { // the 2nd row should be columns' type
+                $this->meta = array_map(function($u, $v){ $u['type'] = trim($v,"\t"); return $u; }, $this->meta, explode($separatedChar, $data[1]));
+                unset($data[1]);
+            }
+            $this->rows = count($data);
+            $this->array_data = array_values($data);
+
+            unset($data);
+        } elseif ($isJSONEachRow && !empty($this->_rawData)) {
+            $data = explode("\n", trim($this->_rawData));
+            unset($this->_rawData); // no need to keep rawData
+
+            // parse row0 to get meta
+            $this->meta = array_map(function($v){ return ['name' => $v]; }, array_keys(json_decode($data[0],true)));
+            $this->array_data = $data;
+            $this->rows = count($data);
+
+            unset($data);
+        } elseif ($isCSV || $isTSV) {
+            $data = explode("\n", trim($this->_rawData));
+            unset($this->_rawData); // no need to keep rawData
+
+            $this->array_data = $data;
+            $this->rows = count($data);
+
+            unset($data);
+        } elseif (isset($this->_rawData['data'])) {
+            $this->array_data = $this->_rawData['data'];
+            unset($this->_rawData); // no need to keep rawData
+        }
+
+        if (empty($this->meta) && !($isCSV || $isTSV)) { // no-meta excepts CSV & TSV
             throw  new QueryException('Can`t find meta');
-        }
-
-        $isJSONCompact=(stripos($this->format,'JSONCompact')!==false?true:false);
-        $this->array_data = [];
-        foreach ($data as $rows) {
-            $r = [];
-
-
-            if ($isJSONCompact)
-            {
-                $r[]=$rows;
-            }
-            else {
-                foreach ($this->meta as $meta) {
-                    $r[$meta['name']] = $rows[$meta['name']];
-                }
-            }
-
-            $this->array_data[] = $r;
         }
 
         return true;
@@ -476,6 +498,16 @@ class Statement
     public function getFormat()
     {
         return $this->format;
+    }
+
+    /**
+     * @return array
+     * @throws Exception\TransportException
+     */
+    public function getMeta()
+    {
+        $this->init();
+        return $this->meta;
     }
 
     /**
